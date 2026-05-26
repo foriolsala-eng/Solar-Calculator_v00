@@ -49,6 +49,36 @@
   .topbar h1 { font-size: 17px; font-weight: 600; color: var(--text); }
   .topbar p { font-size: 12px; color: var(--text-sec); }
   .version { font-size: 11px; font-weight: 700; background: var(--amber-mid); color: #fff; padding: 1px 6px; border-radius: 4px; vertical-align: middle; margin-left: 4px; }
+
+  /* ── Mobile-specific overrides (iPhone) ── */
+  @media (max-width: 430px) {
+    .topbar { padding: 48px 12px 8px; }
+    .topbar-company { gap: 8px; padding-bottom: 8px; margin-bottom: 6px; }
+    .company-logo { height: 22px; }
+    .company-name { font-size: 11px; }
+    .company-details { gap: 4px 10px; margin-top: 2px; }
+    .company-details a { font-size: 10px; }
+    .topbar-icon { width: 26px; height: 26px; }
+    .topbar-icon i { font-size: 15px; }
+    .topbar h1 { font-size: 14px; }
+    .topbar p { font-size: 11px; }
+    .version { font-size: 10px; padding: 1px 5px; }
+    .tab { font-size: 10px; min-width: 70px; padding: 8px 4px 6px; }
+    .tab i { font-size: 16px; }
+    .content { padding: 10px; }
+    .section { padding: 12px; }
+    .section-title { font-size: 10px; }
+    .metric .val { font-size: 18px; }
+    .metric .lbl { font-size: 10px; }
+    .metric .unit { font-size: 10px; }
+    .field input, .field select { font-size: 14px; padding: 9px 10px; }
+    .btn-primary { padding: 12px; font-size: 14px; }
+    .btn-sec { font-size: 13px; padding: 10px; }
+    table.meteo-table th { font-size: 10px; padding: 5px 5px; }
+    table.meteo-table td { font-size: 11px; padding: 5px 5px; }
+    .row-info { font-size: 13px; }
+    .note { font-size: 11px; }
+  }
   .tabs { display: flex; gap: 0; background: var(--bg-card); border-bottom: 0.5px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { flex: 1; min-width: 80px; padding: 10px 8px 8px; font-size: 11px; font-weight: 500; text-align: center; cursor: pointer; color: var(--text-ter); border: none; background: transparent; border-bottom: 2px solid transparent; white-space: nowrap; }
@@ -120,6 +150,7 @@
   #loc-msg { font-size: 12px; color: var(--text-sec); margin-top: 6px; }
   .divider-label { font-size: 11px; font-weight: 600; color: var(--text-ter); text-transform: uppercase; letter-spacing: 0.06em; margin: 14px 0 8px; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -155,14 +186,31 @@
 
     <!-- UBICACIÓN -->
     <div class="panel active" id="panel-ubicacion">
+      <!-- PROJECT MANAGER -->
+      <div class="section">
+        <div class="section-title"><i class="ti ti-folder"></i> Proyectos guardados</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <select id="project-select" style="flex:1;font-size:14px;padding:9px 10px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);-webkit-appearance:none;" onchange="loadProject()">
+            <option value="">— Selecciona un proyecto —</option>
+          </select>
+          <button onclick="deleteProject()" style="padding:9px 12px;border:0.5px solid var(--red-text);border-radius:var(--radius);background:transparent;color:var(--red-text);font-size:18px;cursor:pointer;" title="Eliminar proyecto">🗑</button>
+        </div>
+        <div id="active-project-badge" style="display:none;font-size:12px;padding:6px 10px;background:var(--teal-fill);color:var(--teal-text);border-radius:var(--radius);margin-bottom:8px;font-weight:600;"></div>
+      </div>
+
       <div class="section">
         <div class="section-title"><i class="ti ti-map-pin"></i> Coordenadas</div>
         <div class="field-row" style="margin-bottom:10px">
           <div class="field"><label>Latitud</label><input type="number" id="lat" value="14.64" step="0.01" inputmode="decimal" oninput="onLatLonChange()"></div>
           <div class="field"><label>Longitud</label><input type="number" id="lon" value="-90.51" step="0.01" inputmode="decimal" oninput="onLatLonChange()"></div>
         </div>
-        <button class="btn-sec" onclick="getLocation()"><i class="ti ti-gps"></i> Usar mi ubicación GPS</button>
-        <div id="loc-msg"></div>
+        <button class="btn-sec" style="margin-bottom:8px" onclick="getLocation()"><i class="ti ti-gps"></i> Usar mi ubicación GPS</button>
+        <div id="loc-msg" style="margin-bottom:8px"></div>
+        <!-- Save project -->
+        <div style="display:flex;gap:6px">
+          <input type="text" id="project-name" placeholder="Nombre del proyecto..." style="flex:1;font-size:14px;padding:9px 12px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);">
+          <button onclick="saveProject()" style="padding:9px 14px;background:var(--amber-mid);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ti ti-device-floppy"></i> Guardar</button>
+        </div>
       </div>
       <div class="section">
         <div class="section-title"><i class="ti ti-cloud"></i> Meteorología <span id="meteo-source-badge" style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg-sec);color:var(--text-ter);margin-left:4px;">estimada</span></div>
@@ -418,8 +466,15 @@
     <!-- PIRANÓMETRO -->
     <div class="panel" id="panel-piranometro">
       <div class="section">
-        <div class="section-title"><i class="ti ti-device-analytics"></i> Lectura de piranómetro</div>
-        <div class="field"><label>Irradiancia medida (W/m²)</label><input type="number" id="pyr-now" value="750" min="0" max="1500" step="1" inputmode="numeric" oninput="calcPyr()"></div>
+        <div class="section-title"><i class="ti ti-device-analytics"></i> Medición instantánea</div>
+        <div class="note" style="margin-bottom:12px">Introduce la lectura actual del piranómetro. La potencia y temperatura de celda se calculan para ese instante exacto.</div>
+        <div class="field">
+          <label>Irradiancia medida G (W/m²)</label>
+          <div class="input-unit">
+            <input type="number" id="pyr-now" value="750" min="0" max="1500" step="1" inputmode="numeric" oninput="calcPyr()">
+            <span class="unit-label">W/m²</span>
+          </div>
+        </div>
         <div class="field-row">
           <div class="field"><label>Hora</label><input type="time" id="pyr-time" value="12:00" oninput="calcPyr()"></div>
           <div class="field"><label>Mes</label>
@@ -431,31 +486,47 @@
             </select>
           </div>
         </div>
-        <div class="field-row3">
-          <div class="field"><label>GHI día</label><input type="number" id="pyr-day" value="5.4" step="0.1" inputmode="decimal" oninput="calcPyr()"></div>
-          <div class="field"><label>T amb (°C)</label><input type="number" id="pyr-temp" value="25" step="0.5" inputmode="decimal" oninput="calcPyr()"></div>
-          <div class="field"><label>Viento m/s</label><input type="number" id="pyr-wind" value="3" step="0.1" inputmode="decimal" oninput="calcPyr()"></div>
+        <div class="field-row">
+          <div class="field">
+            <label>T ambiente (°C)</label>
+            <div class="input-unit">
+              <input type="number" id="pyr-temp" value="25" step="0.5" inputmode="decimal" oninput="calcPyr()">
+              <span class="unit-label">°C</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Viento (m/s)</label>
+            <div class="input-unit">
+              <input type="number" id="pyr-wind" value="3" step="0.1" inputmode="decimal" oninput="calcPyr()">
+              <span class="unit-label">m/s</span>
+            </div>
+          </div>
         </div>
       </div>
+
       <div class="section">
-        <div class="section-title"><i class="ti ti-chart-line"></i> Diagnóstico en tiempo real</div>
+        <div class="section-title"><i class="ti ti-bolt"></i> Resultados instantáneos</div>
         <div class="metric-grid" style="margin-bottom:12px">
-          <div class="metric accent"><div class="lbl">Potencia ahora</div><div class="val" id="pyr-pow">—</div><div class="unit">kW</div></div>
-          <div class="metric"><div class="lbl">Energía hoy est.</div><div class="val" id="pyr-daily">—</div><div class="unit">kWh</div></div>
+          <div class="metric accent"><div class="lbl">Potencia instantánea</div><div class="val" id="pyr-pow">—</div><div class="unit">kW</div></div>
+          <div class="metric accent"><div class="lbl">Potencia específica</div><div class="val" id="pyr-wpkwp">—</div><div class="unit">W/kWp</div></div>
           <div class="metric"><div class="lbl">T celda</div><div class="val" id="pyr-tcell">—</div><div class="unit">°C</div></div>
-          <div class="metric"><div class="lbl">Pérd. térmica</div><div class="val" id="pyr-tloss">—</div><div class="unit">%</div></div>
+          <div class="metric"><div class="lbl">ΔT celda−amb</div><div class="val" id="pyr-tdelta">—</div><div class="unit">°C</div></div>
         </div>
-        <div class="row-info"><span class="k">Generación teórica hoy</span><span class="v" id="pyr-teor">—</span></div>
-        <div class="row-info"><span class="k">Con piranómetro</span><span class="v" id="pyr-real">—</span></div>
-        <div class="row-info"><span class="k">Performance Ratio</span><span class="v" id="pyr-pr">—</span></div>
+        <div class="row-info"><span class="k">Pérdida térmica instantánea</span><span class="v" id="pyr-tloss">—</span></div>
+        <div class="row-info"><span class="k">PR instantáneo</span><span class="v" id="pyr-pr">—</span></div>
+        <div class="row-info"><span class="k">Potencia teórica sin pérd. térmica</span><span class="v" id="pyr-pteor">—</span></div>
+        <div class="row-info"><span class="k">Pérdida absoluta por temperatura</span><span class="v" id="pyr-ploss-abs">—</span></div>
         <div class="pr-bar"><div class="pr-fill" id="pr-fill" style="width:0%"></div></div>
         <div class="status-row"><div class="dot dot-g" id="st-dot"></div><span id="pyr-badge"></span></div>
-        <div class="note" id="pyr-note">Ingresa la lectura del piranómetro para el diagnóstico.</div>
+        <div class="note" id="pyr-note">Fórmula: T_celda = T_amb + (NOCT−20)/800 × G − 1.5 × viento</div>
       </div>
+
       <div class="section">
         <div class="section-title"><i class="ti ti-history"></i> Registro de lecturas</div>
-        <div class="field-row" style="margin-bottom:8px">
+        <div id="active-project-pyr" class="note" style="margin-bottom:8px;display:none"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
           <button class="btn-sec" style="margin-bottom:0" onclick="addReading()"><i class="ti ti-plus"></i> Agregar</button>
+          <button class="btn-sec" style="margin-bottom:0" onclick="exportReadingsXLSX()"><i class="ti ti-file-spreadsheet"></i> Excel</button>
           <button class="btn-sec" style="margin-bottom:0" onclick="clearReadings()"><i class="ti ti-trash"></i> Limpiar</button>
         </div>
         <div id="readings-wrap"><p style="font-size:13px;color:var(--text-ter)">Sin lecturas registradas.</p></div>
@@ -611,12 +682,46 @@
             <input type="email" id="rpt-to" placeholder="cliente@empresa.com" style="width:100%;font-size:15px;padding:10px 12px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);">
           </div>
         </div>
+        <div class="field">
+          <label>WhatsApp del cliente</label>
+          <div style="display:flex;gap:6px;align-items:stretch">
+            <select id="rpt-wa-code" style="font-size:14px;padding:10px 8px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);-webkit-appearance:none;width:105px;flex-shrink:0;">
+              <option value="502">🇬🇹 +502</option>
+              <option value="503">🇸🇻 +503</option>
+              <option value="504">🇭🇳 +504</option>
+              <option value="505">🇳🇮 +505</option>
+              <option value="506">🇨🇷 +506</option>
+              <option value="507">🇵🇦 +507</option>
+              <option value="52">🇲🇽 +52</option>
+              <option value="57">🇨🇴 +57</option>
+              <option value="51">🇵🇪 +51</option>
+              <option value="56">🇨🇱 +56</option>
+              <option value="54">🇦🇷 +54</option>
+              <option value="55">🇧🇷 +55</option>
+              <option value="58">🇻🇪 +58</option>
+              <option value="593">🇪🇨 +593</option>
+              <option value="591">🇧🇴 +591</option>
+              <option value="595">🇵🇾 +595</option>
+              <option value="598">🇺🇾 +598</option>
+              <option value="1">🇺🇸 +1</option>
+              <option value="34">🇪🇸 +34</option>
+              <option value="44">🇬🇧 +44</option>
+              <option value="49">🇩🇪 +49</option>
+              <option value="33">🇫🇷 +33</option>
+              <option value="39">🇮🇹 +39</option>
+              <option value="31">🇳🇱 +31</option>
+              <option value="971">🇦🇪 +971</option>
+              <option value="966">🇸🇦 +966</option>
+            </select>
+            <input type="tel" id="rpt-wa-num" placeholder="Número celular" inputmode="numeric" style="flex:1;min-width:0;font-size:15px;padding:10px 12px;border:0.5px solid var(--border-sec);border-radius:var(--radius);background:var(--bg-sec);color:var(--text);">
+          </div>
+        </div>
         <button class="btn-primary" style="margin-bottom:10px" onclick="generatePDF()"><i class="ti ti-file-type-pdf"></i> Generar PDF del reporte</button>
         <button class="btn-primary" onclick="openOutlook()" style="margin-top:0;background:#0F6E56"><i class="ti ti-mail-forward"></i> Abrir en Outlook</button>
-        <a href="https://wa.me/50255167889" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:#25D366;color:#fff;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;text-decoration:none;">
+        <button onclick="openWhatsApp()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:#25D366;color:#fff;border:none;border-radius:var(--radius-lg);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          +502 5516 7889
-        </a>
+          Enviar por WhatsApp al cliente
+        </button>
       </div>
     </div>
 
@@ -969,58 +1074,80 @@ function renderCharts() {
 }
 
 function calcPyr() {
-  const G = parseFloat(document.getElementById('pyr-now').value)||0;
-  const ghiDay = parseFloat(document.getElementById('pyr-day').value)||5.4;
+  const G    = parseFloat(document.getElementById('pyr-now').value)||0;
   const tempA = parseFloat(document.getElementById('pyr-temp').value)||25;
   const wind = parseFloat(document.getElementById('pyr-wind').value)||3;
-  const kwp = parseFloat(document.getElementById('kwp').value)||10;
+  const kwp  = parseFloat(document.getElementById('kwp').value)||10;
   const noct = parseFloat(document.getElementById('noct').value)||45;
   const tempCoef = parseFloat(document.getElementById('temp-coef').value)/10000;
-  const invEff = parseFloat(document.getElementById('inv-eff').value)/100;
+  const invEff   = parseFloat(document.getElementById('inv-eff').value)/100;
   const cableLoss = parseFloat(document.getElementById('cable-loss').value)/100;
-  // Correct formula: T_cell = T_amb + (NOCT-20)/800 * G_Wm2
-  // Wind cooling correction: each m/s above 1 m/s reduces T_cell by ~1.5°C
-  const tCell = tempA + (noct-20)/800*G - Math.max(0, (wind-1)*1.5);
+  const soiling  = parseFloat(document.getElementById('soiling').value)/100;
+  const unavail  = parseFloat(document.getElementById('unavail').value)/100;
+
+  // Cell temperature: T_cell = T_amb + (NOCT-20)/800 × G − wind_cooling
+  const tCell = tempA + (noct-20)/800*G - Math.max(0,(wind-1)*1.5);
+  const deltaT = tCell - tempA;
+
+  // Thermal loss factor (negative tempCoef → factor < 1 when T_cell > 25°C)
   const tempLossFactor = 1 + tempCoef*(tCell-25);
   const tempLoss = Math.max(0.5, tempLossFactor);
-  const unavail = parseFloat(document.getElementById('unavail').value)/100;
-  const soilingPyr = parseFloat(document.getElementById('soiling').value)/100;
-  const prNow = invEff*(1-cableLoss)*tempLoss*(1-soilingPyr)*0.98*0.99*(1-unavail);
-  const pow = kwp*(G/1000)*prNow;
-  const dailyR = kwp*ghiDay*prNow;
-  const prBase = invEff*(1-cableLoss)*(1-soilingPyr)*0.98*0.99;
-  const dailyT = kwp*ghiDay*prBase;
-  const prR = dailyR/dailyT;
-  document.getElementById('pyr-pow').textContent = pow.toFixed(2);
-  document.getElementById('pyr-daily').textContent = dailyR.toFixed(2);
-  document.getElementById('pyr-tcell').textContent = tCell.toFixed(1);
-  document.getElementById('pyr-tloss').textContent = Math.abs(((1-tempLoss)*100)).toFixed(1);
-  document.getElementById('pyr-teor').textContent = dailyT.toFixed(2)+' kWh';
-  document.getElementById('pyr-real').textContent = dailyR.toFixed(2)+' kWh';
-  document.getElementById('pyr-pr').textContent = prR.toFixed(3);
-  document.getElementById('pr-fill').style.width = Math.min(100,prR*100)+'%';
-  const dot = document.getElementById('st-dot');
+  const tempLossPct = (1 - tempLoss)*100; // positive = loss %
+
+  // Instantaneous PR (no energy integration, just loss factors at this G)
+  const prInst = invEff*(1-cableLoss)*tempLoss*(1-soiling)*0.98*0.99*(1-unavail);
+
+  // Instantaneous power
+  const powInst = kwp*(G/1000)*prInst;
+
+  // Theoretical power without thermal loss (to show what temp costs)
+  const prNoTemp = invEff*(1-cableLoss)*(1-soiling)*0.98*0.99*(1-unavail);
+  const powTeor  = kwp*(G/1000)*prNoTemp;
+  const powLoss  = powTeor - powInst;
+
+  // Specific power W/kWp
+  const wPerKwp = (G/1000)*prInst*1000;
+
+  // Update UI
+  const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  set('pyr-pow',    powInst.toFixed(2));
+  set('pyr-wpkwp',  wPerKwp.toFixed(0));
+  set('pyr-tcell',  tCell.toFixed(1));
+  set('pyr-tdelta', '+'+deltaT.toFixed(1));
+  set('pyr-tloss',  tempLossPct.toFixed(2)+'%');
+  set('pyr-pr',     prInst.toFixed(3));
+  set('pyr-pteor',  powTeor.toFixed(2)+' kW');
+  set('pyr-ploss-abs', '-'+powLoss.toFixed(2)+' kW (−'+tempLossPct.toFixed(1)+'%)');
+
+  document.getElementById('pr-fill').style.width = Math.min(100,prInst*100)+'%';
+
+  const dot   = document.getElementById('st-dot');
   const badge = document.getElementById('pyr-badge');
-  const note = document.getElementById('pyr-note');
-  if(prR>=0.82){ dot.className='dot dot-g'; badge.innerHTML='<span class="badge ok">Excelente ≥82%</span>'; note.textContent='Sistema funcionando óptimamente.'; }
-  else if(prR>=0.75){ dot.className='dot dot-a'; badge.innerHTML='<span class="badge warn">Normal 75–82%</span>'; note.textContent='Rendimiento típico. Revisar limpieza y temperatura.'; }
-  else { dot.className='dot dot-r'; badge.innerHTML='<span class="badge err">Bajo <75%</span>'; note.textContent='PR bajo. Revisar sombras, suciedad, temperatura o fallo de módulos/inversor.'; }
+  const note  = document.getElementById('pyr-note');
+  if(prInst>=0.82){ dot.className='dot dot-g'; badge.innerHTML='<span class="badge ok">PR excelente ≥82%</span>'; }
+  else if(prInst>=0.75){ dot.className='dot dot-a'; badge.innerHTML='<span class="badge warn">PR normal 75–82%</span>'; }
+  else { dot.className='dot dot-r'; badge.innerHTML='<span class="badge err">PR bajo <75%</span>'; }
+  note.textContent = 'T_celda = '+tempA+'°C amb + '+deltaT.toFixed(1)+'°C (NOCT) = '+tCell.toFixed(1)+'°C → pérdida térmica '+tempLossPct.toFixed(2)+'%';
 }
 
 function addReading() {
-  const G = parseFloat(document.getElementById('pyr-now').value)||0;
-  const t = document.getElementById('pyr-time').value;
-  const m = MO[parseInt(document.getElementById('pyr-month').value)];
-  const pow = parseFloat(document.getElementById('pyr-pow').textContent)||0;
-  readings.push({G,t,m,pow});
+  const G    = parseFloat(document.getElementById('pyr-now').value)||0;
+  const t    = document.getElementById('pyr-time').value;
+  const m    = MO[parseInt(document.getElementById('pyr-month').value)];
+  const pow  = parseFloat(document.getElementById('pyr-pow').textContent)||0;
+  const tc   = parseFloat(document.getElementById('pyr-tcell').textContent)||0;
+  const pr   = parseFloat(document.getElementById('pyr-pr').textContent)||0;
+  const tloss = document.getElementById('pyr-tloss').textContent||'—';
+  readings.push({G,t,m,pow,tc,pr,tloss});
+  saveReadingsToProject();
   renderReadings();
 }
 function clearReadings(){ readings=[]; renderReadings(); }
 function renderReadings(){
   const el = document.getElementById('readings-wrap');
   if(!readings.length){el.innerHTML='<p style="font-size:13px;color:var(--text-ter)">Sin lecturas registradas.</p>';return;}
-  let h='<table class="log"><thead><tr><th>Hora</th><th>Mes</th><th>G W/m²</th><th>P kW</th></tr></thead><tbody>';
-  readings.slice(-10).reverse().forEach(r=>{h+=`<tr><td>${r.t}</td><td>${r.m}</td><td>${r.G}</td><td>${r.pow.toFixed(2)}</td></tr>`;});
+  let h='<table class="log"><thead><tr><th>Hora</th><th>Mes</th><th>G W/m²</th><th>P kW</th><th>T cel°C</th><th>PR</th><th>Pérd.T</th></tr></thead><tbody>';
+  readings.slice(-10).reverse().forEach(r=>{h+=`<tr><td>${r.t}</td><td>${r.m}</td><td>${r.G}</td><td>${r.pow.toFixed(2)}</td><td>${r.tc.toFixed(1)}</td><td>${r.pr.toFixed(3)}</td><td>${r.tloss}</td></tr>`;});
   el.innerHTML=h+'</tbody></table>';
 }
 
@@ -1119,6 +1246,138 @@ function updateMeteoTable() {
     if(wEl)   wEl.textContent   = mo[i].wind.toFixed(1);
     if(hEl)   hEl.textContent   = Math.round(mo[i].hum);
   }
+}
+
+// ─── PROJECT MANAGER ─────────────────────
+let activeProject = null;
+
+function getProjects() {
+  try { return JSON.parse(localStorage.getItem('solarProjects')||'{}'); } catch(e) { return {}; }
+}
+function saveProjects(p) {
+  try { localStorage.setItem('solarProjects', JSON.stringify(p)); } catch(e) {}
+}
+
+function saveProject() {
+  const name = document.getElementById('project-name').value.trim();
+  if(!name) { alert('Escribe un nombre para el proyecto.'); return; }
+  const projects = getProjects();
+  const lat = document.getElementById('lat').value;
+  const lon = document.getElementById('lon').value;
+  const kwp = document.getElementById('kwp').value;
+  const sysType = document.getElementById('sys-type').value;
+  const tech = document.getElementById('panel-tech').value;
+  const meteo = monthlyMeteo ? JSON.stringify(monthlyMeteo) : null;
+  projects[name] = {
+    name, lat, lon, kwp, sysType, tech, meteo,
+    savedAt: new Date().toLocaleDateString('es-ES'),
+    readings: projects[name]?.readings || []
+  };
+  saveProjects(projects);
+  activeProject = name;
+  document.getElementById('project-name').value = '';
+  updateProjectSelect();
+  showActiveProject();
+  alert('✓ Proyecto "' + name + '" guardado.');
+}
+
+function loadProject() {
+  const name = document.getElementById('project-select').value;
+  if(!name) return;
+  const projects = getProjects();
+  const p = projects[name];
+  if(!p) return;
+  activeProject = name;
+  document.getElementById('lat').value = p.lat;
+  document.getElementById('lon').value = p.lon;
+  document.getElementById('kwp').value = p.kwp;
+  document.getElementById('sys-type').value = p.sysType;
+  document.getElementById('panel-tech').value = p.tech;
+  if(p.meteo) { monthlyMeteo = JSON.parse(p.meteo); updateMeteoTable(); }
+  else { monthlyMeteo = null; }
+  readings = p.readings || [];
+  renderReadings();
+  onSysTypeChange();
+  onLatLonChange();
+  showActiveProject();
+}
+
+function deleteProject() {
+  const name = document.getElementById('project-select').value;
+  if(!name) return;
+  if(!confirm('¿Eliminar proyecto "' + name + '"?')) return;
+  const projects = getProjects();
+  delete projects[name];
+  saveProjects(projects);
+  if(activeProject===name) activeProject=null;
+  updateProjectSelect();
+  showActiveProject();
+}
+
+function updateProjectSelect() {
+  const sel = document.getElementById('project-select');
+  const projects = getProjects();
+  const keys = Object.keys(projects);
+  sel.innerHTML = '<option value="">— Selecciona un proyecto —</option>';
+  keys.forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = k + ' · ' + projects[k].savedAt + ' · ' + projects[k].lat + ',' + projects[k].lon;
+    if(k===activeProject) opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+function showActiveProject() {
+  const badge = document.getElementById('active-project-badge');
+  const pyrNote = document.getElementById('active-project-pyr');
+  if(activeProject) {
+    badge.style.display='block';
+    badge.textContent='📁 Proyecto activo: ' + activeProject;
+    pyrNote.style.display='block';
+    pyrNote.textContent='📁 Lecturas asociadas a: ' + activeProject;
+  } else {
+    badge.style.display='none';
+    pyrNote.style.display='none';
+  }
+}
+
+// Save readings to active project whenever added
+function saveReadingsToProject() {
+  if(!activeProject) return;
+  const projects = getProjects();
+  if(projects[activeProject]) {
+    projects[activeProject].readings = readings;
+    saveProjects(projects);
+  }
+}
+
+// ─── XLSX EXPORT ─────────────────────────
+function exportReadingsXLSX() {
+  if(!readings.length) { alert('No hay lecturas para exportar.'); return; }
+  // Build CSV-based XLSX using SheetJS via CDN (loaded dynamically)
+  const header = ['Proyecto','Fecha','Hora','Mes','G W/m²','Potencia kW','T celda °C','PR','Pérd.Térmica %','Lat','Lon'];
+  const lat = document.getElementById('lat').value;
+  const lon = document.getElementById('lon').value;
+  const proj = activeProject || 'Sin proyecto';
+  const today = new Date().toLocaleDateString('es-ES');
+  const rows = readings.map(r => [
+    proj, today, r.t, r.m, r.G,
+    r.pow.toFixed(2), r.tc.toFixed(1), r.pr.toFixed(3),
+    r.tloss, lat, lon
+  ]);
+  // Build CSV
+  const csv = [header, ...rows].map(r => r.join(',')).join('
+');
+  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'GENERA_Lecturas_' + proj.replace(/\s+/g,'_') + '_' + today.replace(/\//g,'-') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ─── REPORT ENGINE ───────────────────────
@@ -1305,6 +1564,29 @@ async function generatePDF() {
   }, 800);
 }
 
+function openWhatsApp() {
+  const d = getReportData();
+  const waCode = document.getElementById('rpt-wa-code').value;
+  const waLocal = document.getElementById('rpt-wa-num').value.replace(/\D/g,'');
+  const waNum = waCode + waLocal;
+  if(!waLocal) { alert('Introduce el número de WhatsApp del cliente primero.'); return; }
+  const msg = encodeURIComponent(
+    'Estimado cliente / Dear client,\n\n' +
+    'Le enviamos el estudio de generación solar para: *' + d.client + '*\n\n' +
+    '⚡ *Energía anual:* ' + d.annual + ' MWh/año\n' +
+    '📅 *Media mensual:* ' + d.monthly + ' kWh/mes\n' +
+    '📊 *Rendimiento:* ' + d.yield_v + ' kWh/kWp·año\n' +
+    '⚙️ *Performance Ratio:* ' + d.pr + '\n' +
+    '🌿 *CO₂ evitado:* ' + d.co2 + ' ton/año\n' +
+    '📈 *Total 25 años:* ' + d.y25 + ' MWh\n\n' +
+    'Sistema: ' + d.kwp + ' kWp · ' + d.sysType + '\n' +
+    (d.location ? 'Ubicación: ' + d.location + '\n' : '') +
+    '\nPara más información: GENERA Energía Solar\n' +
+    'francesc@generasl.com · +502 5516 7889'
+  );
+  window.open('https://wa.me/' + waNum + '?text=' + msg, '_blank');
+}
+
 function openOutlook() {
   const d = getReportData();
   if(!d.to) { alert('Introduce el correo del cliente antes de continuar.'); return; }
@@ -1335,6 +1617,7 @@ function openOutlook() {
   window.open('mailto:' + d.to + '?subject=' + subj + '&body=' + body, '_self');
 }
 
+updateProjectSelect();
 onLatLonChange();
 updateMeteoTable();
 calcPyr();
